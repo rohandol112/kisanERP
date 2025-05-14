@@ -1,0 +1,160 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Models
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  role          UserRole  @default(FARMER)
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  farm          Farm?
+  transactions  Transaction[]
+  bids          Bid[]
+  ratings       Rating[]
+  messages      Message[]
+}
+
+enum UserRole {
+  ADMIN
+  FARMER
+  BUYER
+}
+
+// Farm Information
+model Farm {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  name          String
+  address       String
+  area          Float
+  location      Json?     // Coordinates
+  crops         Crop[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Crop Management
+model Crop {
+  id            String    @id @default(cuid())
+  farmId        String
+  farm          Farm      @relation(fields: [farmId], references: [id])
+  name          String
+  variety       String?
+  quantity      Float
+  unit          String
+  harvestDate   DateTime?
+  status        CropStatus @default(GROWING)
+  price         Float?
+  cost          Json?     // Production costs
+  qrCode        String?   // QR code for inventory
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  transactions  Transaction[]
+  bids          Bid[]
+}
+
+enum CropStatus {
+  GROWING
+  READY
+  SOLD
+  EXPIRED
+}
+
+// Market & Transactions
+model Transaction {
+  id            String    @id @default(cuid())
+  cropId        String
+  crop          Crop      @relation(fields: [cropId], references: [id])
+  sellerId      String
+  seller        User      @relation("Seller", fields: [sellerId], references: [id])
+  buyerId       String
+  buyer         User      @relation("Buyer", fields: [buyerId], references: [id])
+  quantity      Float
+  price         Float
+  totalAmount   Float
+  status        TransactionStatus @default(PENDING)
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Bid {
+  id            String    @id @default(cuid())
+  cropId        String
+  crop          Crop      @relation(fields: [cropId], references: [id])
+  buyerId       String
+  buyer         User      @relation(fields: [buyerId], references: [id])
+  price         Float
+  quantity      Float
+  status        BidStatus @default(PENDING)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Ratings & Reviews
+model Rating {
+  id            String    @id @default(cuid())
+  fromUserId    String
+  fromUser      User      @relation("FromUser", fields: [fromUserId], references: [id])
+  toUserId      String
+  toUser        User      @relation("ToUser", fields: [toUserId], references: [id])
+  rating        Int       @db.SmallInt
+  comment       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Messaging System
+model Message {
+  id            String    @id @default(cuid())
+  senderId      String
+  sender        User      @relation(fields: [senderId], references: [id])
+  receiverId    String
+  content       String
+  read          Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Enums
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  UPI
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+} 
